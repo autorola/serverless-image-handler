@@ -9,6 +9,7 @@ import {
   CachePolicy,
   CacheQueryStringBehavior,
   DistributionProps,
+  HttpVersion,
   IOrigin,
   OriginRequestPolicy,
   OriginSslPolicy,
@@ -30,6 +31,8 @@ import { SolutionConstructProps } from "../types";
 import * as api from "aws-cdk-lib/aws-apigateway";
 import { SolutionsMetrics, ExecutionDay } from "metrics-utils";
 import { ConditionAspect } from "../../utils/aspects";
+import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
+import { CfnWebACLAssociation } from "aws-cdk-lib/aws-wafv2";
 
 export interface BackEndProps extends SolutionConstructProps {
   readonly solutionVersion: string;
@@ -41,6 +44,11 @@ export interface BackEndProps extends SolutionConstructProps {
   readonly uuid: string;
   readonly cloudFrontPriceClass: string;
   readonly createSourceBucketsResource: (key?: string) => string[];
+  readonly cloudFrontAliases: string[];
+  readonly cloudFrontCertificateArn: string;
+  readonly cloudFrontDefaultRootObject: string;
+  readonly cloudFrontWebAclArn: string;
+  readonly apiGatewayWebAclArn: string;
 }
 
 export class BackEnd extends Construct {
@@ -186,6 +194,11 @@ export class BackEnd extends Construct {
       enableLogging: true,
       logBucket: props.logsBucket,
       logFilePrefix: "api-cloudfront/",
+      domainNames: props.cloudFrontAliases,
+      certificate: Certificate.fromCertificateArn(this, "cert", props.cloudFrontCertificateArn),
+      webAclId: props.cloudFrontWebAclArn,
+      defaultRootObject: props.cloudFrontDefaultRootObject,
+      httpVersion: HttpVersion.HTTP2_AND_3,
       errorResponses: [
         { httpStatus: 500, ttl: Duration.minutes(10) },
         { httpStatus: 501, ttl: Duration.minutes(10) },
@@ -221,6 +234,14 @@ export class BackEnd extends Construct {
         apiGatewayProps,
       }
     );
+
+    if (props.apiGatewayWebAclArn)
+    {
+      new CfnWebACLAssociation(this, 'WebACLAssociation', {
+        webAclArn: props.apiGatewayWebAclArn,
+        resourceArn: imageHandlerCloudFrontApiGatewayLambda.apiGateway.deploymentStage.stageArn
+      })
+    }
 
     addCfnSuppressRules(imageHandlerCloudFrontApiGatewayLambda.apiGateway, [
       {
