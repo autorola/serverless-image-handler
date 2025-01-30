@@ -43,6 +43,11 @@ export interface BackEndProps extends SolutionConstructProps {
   readonly conditions: Conditions;
   readonly sharpSizeLimit: string;
   readonly createSourceBucketsResource: (key?: string) => string[];
+  readonly cloudFrontAliases: string[];
+  readonly cloudFrontCertificateArn: string;
+  readonly cloudFrontDefaultRootObject: string;
+  readonly cloudFrontWebAclArn: string;
+  readonly apiGatewayWebAclArn: string;
 }
 
 export class BackEnd extends Construct {

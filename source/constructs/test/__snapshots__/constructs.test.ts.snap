@@ -175,7 +175,7 @@ exports[`Dynamic Image Transformation for Amazon CloudFront Stack Snapshot 1`] =
   "Mappings": {
     "Solution": {
       "Config": {
-        "AnonymousUsage": "Yes",
+        "AnonymousUsage": "No",
         "DeployCloudWatchDashboard": "Yes",
         "SharpSizeLimit": "",
         "SolutionId": "S0ABC",
@@ -264,6 +264,25 @@ exports[`Dynamic Image Transformation for Amazon CloudFront Stack Snapshot 1`] =
             "CloudFrontPriceClassParameter",
             "UseExistingCloudFrontDistributionParameter",
             "ExistingCloudFrontDistributionIdParameter",
+            "DefaultRootObjectParameter",
+          ],
+        },
+        {
+          "Label": {
+            "default": "Custom domain names and certificate for the images served by this distribution.",
+          },
+          "Parameters": [
+            "CloudFrontAliasesParameter",
+            "CloudFrontCertificateArnParameter",
+          ],
+        },
+        {
+          "Label": {
+            "default": "AWS WAF",
+          },
+          "Parameters": [
+            "CloudFrontWebAclArnParameter",
+            "ApiGatewayWebAclArnParameter",
           ],
         },
       ],
@@ -271,14 +290,26 @@ exports[`Dynamic Image Transformation for Amazon CloudFront Stack Snapshot 1`] =
         "AutoWebPParameter": {
           "default": "AutoWebP",
         },
+        "CloudFrontAliasesParameter": {
+          "default": "CloudFront Aliases",
+        },
+        "CloudFrontCertificateArnParameter": {
+          "default": "CloudFront Certificate ARN",
+        },
         "CloudFrontPriceClassParameter": {
           "default": "CloudFront PriceClass",
+        },
+        "CloudFrontWebAclArnParameter": {
+          "default": "WebACL ID",
         },
         "CorsEnabledParameter": {
           "default": "CORS Enabled",
         },
         "CorsOriginParameter": {
           "default": "CORS Origin",
+        },
+        "DefaultRootObjectParameter": {
+          "default": "Default Root Object",
         },
         "DeployDemoUIParameter": {
           "default": "Deploy Demo UI",
@@ -460,6 +491,11 @@ exports[`Dynamic Image Transformation for Amazon CloudFront Stack Snapshot 1`] =
     },
   },
   "Parameters": {
+    "ApiGatewayWebAclArnParameter": {
+      "Default": "",
+      "Description": "The ARN of the Regional AWS WAF WebACL that will be associated with the API Gateway.",
+      "Type": "String",
+    },
     "AutoWebPParameter": {
       "AllowedValues": [
         "Yes",
@@ -474,6 +510,16 @@ exports[`Dynamic Image Transformation for Amazon CloudFront Stack Snapshot 1`] =
       "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
       "Type": "AWS::SSM::Parameter::Value<String>",
     },
+    "CloudFrontAliasesParameter": {
+      "Default": "",
+      "Description": "Alternate Domain Names (CNAMEs) as comma-separated list.",
+      "Type": "CommaDelimitedList",
+    },
+    "CloudFrontCertificateArnParameter": {
+      "Default": "",
+      "Description": "Associate a certificate from AWS Certificate Manager. The certificate must be in the US East (N. Virginia) Region (us-east-1).",
+      "Type": "String",
+    },
     "CloudFrontPriceClassParameter": {
       "AllowedValues": [
         "PriceClass_All",
@@ -482,6 +528,11 @@ exports[`Dynamic Image Transformation for Amazon CloudFront Stack Snapshot 1`] =
       ],
       "Default": "PriceClass_All",
       "Description": "The AWS CloudFront price class to use. Lower price classes will avoid high cost edge locations, reducing cost at the expense of possibly increasing request latency. For more information see: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_cloudfront/PriceClass.html",
+      "Type": "String",
+    },
+    "CloudFrontWebAclArnParameter": {
+      "Default": "",
+      "Description": "The ARN of the Global AWS WAF WebACL that will be associated with the CloudFront distribution.",
       "Type": "String",
     },
     "CorsEnabledParameter": {
@@ -496,6 +547,11 @@ exports[`Dynamic Image Transformation for Amazon CloudFront Stack Snapshot 1`] =
     "CorsOriginParameter": {
       "Default": "*",
       "Description": "If you selected 'Yes' above, please specify an origin value here. A wildcard (*) value will support any origin. We recommend specifying an origin (i.e. https://example.domain) to restrict cross-site access to your API.",
+      "Type": "String",
+    },
+    "DefaultRootObjectParameter": {
+      "Default": "/",
+      "Description": "The default root object for the distribution. This value must exist in the distribution and is the object that CloudFront serves when requests arrive for the root URL.",
       "Type": "String",
     },
     "DeployDemoUIParameter": {
@@ -939,6 +995,9 @@ function processQueryParams(querystring) {
       },
       "Properties": {
         "DistributionConfig": {
+          "Aliases": {
+            "Ref": "CloudFrontAliasesParameter",
+          },
           "Comment": "Image Handler Distribution for Dynamic Image Transformation for Amazon CloudFront",
           "CustomErrorResponses": [
             {
@@ -988,8 +1047,11 @@ function processQueryParams(querystring) {
             "TargetOriginId": "TestStackBackEndImageHandlerCloudFrontApiGatewayLambdaCloudFrontToApiGatewayCloudFrontDistributionOrigin1A053AEB7",
             "ViewerProtocolPolicy": "redirect-to-https",
           },
+          "DefaultRootObject": {
+            "Ref": "DefaultRootObjectParameter",
+          },
           "Enabled": true,
-          "HttpVersion": "http2",
+          "HttpVersion": "http2and3",
           "IPV6Enabled": true,
           "Logging": {
             "Bucket": {
@@ -1062,6 +1124,16 @@ function processQueryParams(querystring) {
           ],
           "PriceClass": {
             "Ref": "CloudFrontPriceClassParameter",
+          },
+          "ViewerCertificate": {
+            "AcmCertificateArn": {
+              "Ref": "CloudFrontCertificateArnParameter",
+            },
+            "MinimumProtocolVersion": "TLSv1.2_2021",
+            "SslSupportMethod": "sni-only",
+          },
+          "WebACLId": {
+            "Ref": "CloudFrontWebAclArnParameter",
           },
         },
         "Tags": [
@@ -2806,6 +2878,37 @@ function handler(event) {
 | stats count(DefaultRequests) as DefaultRequestsCount, count(ThumborRequests) as ThumborRequestsCount, count(CustomRequests) as CustomRequestsCount, count(QueryParamRequests) as QueryParamRequestsCount, count(ExpiresRequests) as ExpiresRequestsCount",
       },
       "Type": "AWS::Logs::QueryDefinition",
+    },
+    "BackEndWebACLAssociation66E598C7": {
+      "Properties": {
+        "ResourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region",
+              },
+              "::/restapis/",
+              {
+                "Ref": "BackEndImageHandlerCloudFrontApiGatewayLambdaLambdaRestApi5A77D109",
+              },
+              "/stages/",
+              {
+                "Ref": "BackEndImageHandlerCloudFrontApiGatewayLambdaLambdaRestApiDeploymentStageimageB55D20E3",
+              },
+            ],
+          ],
+        },
+        "WebACLArn": {
+          "Ref": "ApiGatewayWebAclArnParameter",
+        },
+      },
+      "Type": "AWS::WAFv2::WebACLAssociation",
     },
     "BackEndWriteGetObjectResponsePolicyF3008955": {
       "Condition": "CommonResourcesEnableS3ObjectLambdaConditionF2C07DCD",

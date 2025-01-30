@@ -199,10 +199,40 @@ export class ServerlessImageHandlerStack extends Stack {
       ],
     });
 
+    const cloudFrontDefaultRootObjectParameter = new CfnParameter(this, "DefaultRootObjectParameter", {
+        type: "String",
+        description: "The default root object for the distribution. This value must exist in the distribution and is the object that CloudFront serves when requests arrive for the root URL.",
+        default: "/"
+    });
+
+    const cloudFrontAliasesParameter = new CfnParameter(this, "CloudFrontAliasesParameter", {
+        type: "CommaDelimitedList",
+        description: "Alternate Domain Names (CNAMEs) as comma-separated list.",
+        default: ""
+    });
+
+    const cloudFrontCertificateArnParameter = new CfnParameter(this, "CloudFrontCertificateArnParameter", {
+        type: "String",
+        description: "Associate a certificate from AWS Certificate Manager. The certificate must be in the US East (N. Virginia) Region (us-east-1).",
+        default: ""
+    });
+
+    const cloudFrontWebAclArnParameter = new CfnParameter(this, "CloudFrontWebAclArnParameter", {
+        type: "String",
+        description: "The ARN of the Global AWS WAF WebACL that will be associated with the CloudFront distribution.",
+        default: ""
+    });
+
+    const apiGatewayWebAclArnParameter = new CfnParameter(this, "ApiGatewayWebAclArnParameter", {
+        type: "String",
+        description: "The ARN of the Regional AWS WAF WebACL that will be associated with the API Gateway.",
+        default: ""
+    });
+
     const solutionMapping = new CfnMapping(this, "Solution", {
       mapping: {
         Config: {
-          AnonymousUsage: "Yes",
+          AnonymousUsage: "No",
           DeployCloudWatchDashboard: "Yes",
           SolutionId: props.solutionId,
           Version: props.solutionVersion,
@@ -274,6 +304,11 @@ export class ServerlessImageHandlerStack extends Stack {
       conditions: commonResources.conditions,
       sharpSizeLimit,
       createSourceBucketsResource: commonResources.customResources.createSourceBucketsResource,
+      cloudFrontDefaultRootObject: cloudFrontDefaultRootObjectParameter.valueAsString,
+      cloudFrontAliases: cloudFrontAliasesParameter.valueAsList,
+      cloudFrontCertificateArn: cloudFrontCertificateArnParameter.valueAsString,
+      cloudFrontWebAclArn: cloudFrontWebAclArnParameter.valueAsString,
+      apiGatewayWebAclArn: apiGatewayWebAclArnParameter.valueAsString,
       ...solutionConstructProps,
     });
 
@@ -379,8 +414,23 @@ export class ServerlessImageHandlerStack extends Stack {
               cloudFrontPriceClassParameter.logicalId,
               useExistingCloudFrontDistribution.logicalId,
               existingCloudFrontDistributionId.logicalId,
+              cloudFrontDefaultRootObjectParameter.logicalId
             ],
           },
+          {
+            Label: { default: "Custom domain names and certificate for the images served by this distribution." },
+            Parameters: [
+                cloudFrontAliasesParameter.logicalId,
+                cloudFrontCertificateArnParameter.logicalId
+            ],
+          },
+          {
+            Label: { default: "AWS WAF" },
+            Parameters: [
+                cloudFrontWebAclArnParameter.logicalId,
+                apiGatewayWebAclArnParameter.logicalId
+            ],
+          }
         ],
         ParameterLabels: {
           [enableS3ObjectLambdaParameter.logicalId]: {
@@ -421,6 +471,18 @@ export class ServerlessImageHandlerStack extends Stack {
           },
           [existingCloudFrontDistributionId.logicalId]: {
             default: "Existing CloudFront Distribution Id",
+          },
+          [cloudFrontAliasesParameter.logicalId]: {
+              default: "CloudFront Aliases",
+          },
+          [cloudFrontCertificateArnParameter.logicalId]: {
+              default: "CloudFront Certificate ARN",
+          },
+          [cloudFrontWebAclArnParameter.logicalId]: {
+              default: "WebACL ID",
+          },
+          [cloudFrontDefaultRootObjectParameter.logicalId]: {
+              default: "Default Root Object",
           },
         },
       },

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.0-AUTOROLA] - 2025-01-28
+
+### Changed
+
+- Set `HttpVersion` to support both HTTP/2 and HTTP/3 protocols.
+- Set `AnonymousUsage` disabled as default value. 
+
+### Added
+
+- Added `CloudFrontAliases` to support alternate domain names (CNAMEs).
+- Added `CloudFrontCertificate` to associate a certificate from AWS Certificate Manager.
+
+### Security
+
+- Added `DefaultRootObject` to specify the default root object for the CloudFront distribution.
+- Added `CloudFrontWebAcl` to associate a Global AWS WAF WebACL with the CloudFront distribution.
+- Added `ApiGatewayWebAcl` to associate a Regional AWS WAF WebACL with the API Gateway.
+
 ## [7.0.0] - 2025-01-27
 
 ### Changed

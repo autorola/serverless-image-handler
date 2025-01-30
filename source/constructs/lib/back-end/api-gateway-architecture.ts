@@ -19,6 +19,7 @@ import {
   Distribution,
   FunctionRuntime,
   IDistribution,
+  HttpVersion,
 } from "aws-cdk-lib/aws-cloudfront";
 import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
@@ -31,6 +32,9 @@ import * as api from "aws-cdk-lib/aws-apigateway";
 import { ConditionAspect } from "../../utils/aspects";
 import { readFileSync } from "fs";
 import { BackEnd, BackEndProps } from "./back-end-construct";
+import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
+import { CfnWebACLAssociation } from "aws-cdk-lib/aws-wafv2";
+
 
 export interface ApiGatewayArchitectureProps extends BackEndProps {
   originRequestPolicy: OriginRequestPolicy;
@@ -96,6 +100,11 @@ export class ApiGatewayArchitecture {
         { httpStatus: 503, ttl: Duration.minutes(10) },
         { httpStatus: 504, ttl: Duration.minutes(10) },
       ],
+      domainNames: props.cloudFrontAliases,
+      certificate: Certificate.fromCertificateArn(scope, "cert", props.cloudFrontCertificateArn),
+      webAclId: props.cloudFrontWebAclArn,
+      defaultRootObject: props.cloudFrontDefaultRootObject,
+      httpVersion: HttpVersion.HTTP2_AND_3,
     };
 
     const apiGatewayProps: LambdaRestApiProps = {
@@ -153,6 +162,12 @@ export class ApiGatewayArchitecture {
       "Properties.RetentionInDays",
       Fn.conditionIf(props.conditions.isLogRetentionPeriodInfinite.logicalId, Aws.NO_VALUE, props.logRetentionPeriod)
     );
+
+    // Assign WebACL to the API Gateway stage
+    new CfnWebACLAssociation(scope, 'WebACLAssociation', {
+      webAclArn: props.apiGatewayWebAclArn,
+      resourceArn: imageHandlerCloudFrontApiGatewayLambda.apiGateway.deploymentStage.stageArn
+    })
 
     addCfnSuppressRules(imageHandlerCloudFrontApiGatewayLambda.apiGateway, [
       {
